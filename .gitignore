@@ -5,3 +5,5 @@
 !/logs/.placeholder
 /data/*
 !/data/.placeholder
+/ckpts/*
+!/ckpts/.placeholder
