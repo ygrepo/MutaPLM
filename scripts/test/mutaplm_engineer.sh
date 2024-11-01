@@ -7,10 +7,10 @@ do
 python eval.py \
 --dataset_name mutadescribe \
 --dataset_path ./data/mutadescribe/test_$level.csv \
---mut_engineer \
---model_name e_esm \
+--muta_engineer \
+--model_name mutaplm \
 --model_config_path ./configs/mutaplm_inference.yaml \
---model_checkpoint ./ckpts/mutaplm/model_checkpoint.pth \
+--model_checkpoint ./ckpts/mutaplm/model_checkpoint1.pth \
 --pred_save_path ./outputs/mutaplm.txt \
 --batch_size 4 \
 --device 0

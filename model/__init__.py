@@ -3,6 +3,6 @@ from model.mutaplm import MutaPLM
 
 model_name2cls = {
     "esm": VanllinaEsm,
-    "e_esm": MutaPLM,
+    "mutaplm": MutaPLM,
     "random": RandomModel
 }

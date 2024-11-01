@@ -95,12 +95,6 @@ class VanllinaEsm(nn.Module):
             logits[torch.where(protein.input_ids == self.protein_tokenizer.sep_token_id)] = -1000
         for i in range(logits.shape[0]):
             for j in range(logits.shape[1]):
-                """
-                try:
-                    assert logits[i, j, protein.input_ids[i][j]].item() == 0 or logits[i, j, protein.input_ids[i][j]].item() == -1000
-                except:
-                    print(logits[i, j, protein.input_ids[i][j]].item())
-                """
                 logits[i, j, protein.input_ids[i][j]] = -1000
         logits[(1 - protein.attention_mask).bool()] = -1000
         if not self.ontoprotein:

@@ -1,0 +1,6 @@
+**/__pycache__/
+/outputs/*
+!/outputs/.placeholder
+/logs/*
+!/logs/.placeholder
+/data/*

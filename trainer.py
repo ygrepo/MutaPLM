@@ -137,14 +137,12 @@ class Trainer(object):
         self.model = model_cls(**model_cfg).to(self.device)
 
         logger.info(f"Trainable params: {sum([p.numel() if p.requires_grad else 0 for p in self.model.parameters()])/1000000}M")
-        for name, param in self.model.named_parameters():
-            if param.requires_grad:
-                print(name, "%.4lf" % (param.numel() / 1000000))
         logger.info(f"Total params: {sum([p.numel() for p in self.model.parameters()])/1000000}M")
 
         if self.args.model_checkpoint is not None:
             logger.info(f"Load model checkpoint from {self.args.model_checkpoint}")
-            state_dict = torch.load(open(self.args.model_checkpoint, "rb"), map_location=torch.device("cpu"))
+            state_dict = torch.load(open(self.args.model_checkpoint, "rb"), map_location=torch.device("cpu"))["model"]
+            # NOTE: change back to state_dict["model"]
             self.model.load_state_dict(state_dict["model"], strict=True)
         self.optimizer = torch.optim.AdamW(params=self.model.parameters(), lr=self.args.lr, weight_decay=self.args.weight_decay)
         self.schedular = torch.optim.lr_scheduler.OneCycleLR(

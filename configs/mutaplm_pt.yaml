@@ -8,5 +8,5 @@ text_maxlen: 512
 func_maxlen: 512
 m2t: true
 t2m: true
-pretrain: false
 test_mode: false
+pretrain: true

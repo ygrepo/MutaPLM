@@ -7,7 +7,6 @@ import re
 class LiteratureDataset(Dataset):
     def __init__(self, path, **kwargs) -> None:
         super().__init__()
-        filter_accs = [x.strip().split(" ")[1] for x in open("./data/filter_acc.txt", "r").readlines()]
         self.uniprot2pubmed = json.load(open(os.path.join(path, "uniprot_pubmed.json"), "r"))
         self.uniprot2seq = {}
         self.uniprot2func = {}
@@ -17,7 +16,7 @@ class LiteratureDataset(Dataset):
             for key in uniprot_data[id]:
                 if key not in keys:
                     keys.add(key)
-            if "Sequence" in uniprot_data[id] and id in self.uniprot2pubmed and id not in filter_accs:
+            if "Sequence" in uniprot_data[id] and id in self.uniprot2pubmed:
                 self.uniprot2seq[id] = uniprot_data[id]["Sequence"]
                 if "Description" in uniprot_data[id]:
                     pattern1 = r'\(PubMed:\d+(, PubMed:\d+)*\)'

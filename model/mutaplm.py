@@ -6,13 +6,12 @@ import sys
 import torch
 import torch.nn as nn
 
-from transformers import LlamaTokenizer, LlamaForCausalLM, EsmTokenizer
+from transformers import LlamaTokenizer, LlamaConfig, LlamaForCausalLM, EsmTokenizer
 from collections import OrderedDict
 from peft import get_peft_model, LoraConfig, TaskType
 from torch.nn import CrossEntropyLoss
 from model.modeling_esm import EsmForMaskedLM, EsmForMutationDesign
 
-# e-esm
 class MutaPLM(nn.Module):
     def __init__(
         self,
@@ -29,8 +28,8 @@ class MutaPLM(nn.Module):
         resume=False,
         device=None,
         m2t=True,
-        t2m=False,
-        pretrain=True,
+        t2m=True,
+        pretrain=False,
     ):
         super(MutaPLM, self).__init__()
         self.device = device
@@ -55,7 +54,7 @@ class MutaPLM(nn.Module):
             if self.t2m:
                 self.loss_names.append("loss_t2p")
         else:
-            self.protein_model = EsmForMutationDesign.from_pretrained(protein_model, torch_dtype=torch.bfloat16)
+            self.protein_model = EsmForMutationDesign.from_pretrained(protein_model, torch_dtype=torch.bfloat16) # delta decoder is here
             self.forward_fn = self.forward_ft
             self.loss_names = []
             if self.m2t:
@@ -76,7 +75,11 @@ class MutaPLM(nn.Module):
         self.llm_tokenizer.add_special_tokens({'eos_token': '</s>'})
         self.llm_tokenizer.add_special_tokens({'unk_token': '<unk>'})
         print(f"*** loading llm from {llama_ckpt}...")
-        self.llm = LlamaForCausalLM.from_pretrained(llama_ckpt, torch_dtype=torch.bfloat16)
+        if pretrain:
+            self.llm = LlamaForCausalLM.from_pretrained(llama_ckpt, torch_dtype=torch.bfloat16)
+        else:
+            cfg = LlamaConfig.from_pretrained(llama_ckpt)
+            self.llm = LlamaForCausalLM(cfg)
         self.llm.resize_token_embeddings(len(self.llm_tokenizer))
         
         # add lora
@@ -91,8 +94,8 @@ class MutaPLM(nn.Module):
         self.llm = get_peft_model(self.llm, lora_config)
         self.llm.print_trainable_parameters()
         
-        # cross attention
-        print("*** building cross attention...")
+        # delta encoder with cross attention
+        print("*** building delta encoder...")
         self.query_protein1 = nn.Parameter(
             torch.zeros(1, num_query_tokens_protein1, self.protein_model.config.hidden_size)
         )
@@ -157,9 +160,9 @@ class MutaPLM(nn.Module):
 
 
     def convert_params(self, ckpt):
-        # change keys in ckpt.params_name:
-        # pooler_protein -> pooler_protein1&2
-        # query_protein -> query_protein1&2
+        # Initialize parameters for fine-tuning
+        # pooler_protein -> pooler_protein 1&2
+        # query_protein -> query_protein 1&2
         new_ckpt = OrderedDict()
         for k, v in ckpt.items():
             if "pooler_protein" in k:
@@ -235,8 +238,6 @@ class MutaPLM(nn.Module):
                     query_protein2,
                     delta_feature,
                     delta_feature,
-                    #p_feature2[0],
-                    #p_feature2[0],
                     attn_mask = attn_mask_2
                 )
                 protein2_embeds = self.proj_protein2(p_feature2[0])
@@ -695,7 +696,7 @@ class MutaPLM(nn.Module):
         protein2,
         muta_prompt,
         pfunction=None,
-        use_gt_function=False,     # 是否直接使用 ground truth 的 function
+        use_gt_function=False,
         use_nucleus_sampling=True,
         num_beams=2,
         max_length=256,
