@@ -1,6 +1,6 @@
 ## MutaPLM
 
-This the the implementation code for **MutaPLM: rotein Language Modeling for Mutation Explanation and Engineering.**
+This the the official repository for the NeurIPS 2024 paper [MutaPLM: Protein Language Modeling for Mutation Explanation and Engineering](https://arxiv.org/abs/2410.22949).
 
 #### Requirements
 
@@ -18,17 +18,16 @@ sequence_models
 scikit-learn
 ```
 
-#### MutaDescribe
+#### Data
 
-The constructed **MutaDescribe** is displayed in `data/mutadescribe` which involves several csv files. We provide the mutation entry (entry column), the wild-type protein (protein1 column), the mutant (protein2 column), the function of the wild-type (function column), and the description of mutational effects (all_description column). Due to size limits, we provide the test sets and 100 samples for the training and validation set. The whole dataset will be publicly released soon.
+The pre-training dataset and the **MutaDescribe** dataset are available at [HuggingFace](https://huggingface.co/datasets/icycookies/MutaDescribe). Download the data and place them under the `data` folder.
 
+#### Model Checkpoints
 
-#### Checkpoints
-
-Before running the scripts, you should download:
-- protein model checkpoint: [esm2_t33_650M_UR50D](https://huggingface.co/facebook/esm2_t33_650M_UR50D) and place it under `ckpts/esm2-650m`.
-- language model checkpoint: [BioMedGPT-LM](https://huggingface.co/PharMolix/BioMedGPT-LM-7B) and place it under `ckpts/biomedgpt-lm`.
-- our checkpoint of MutaPLM and place it under `ckpts/mutaplm`. The model weight will be publicly released soon.
+Before running the scripts, you should:
+- Download the PLM checkpoint [esm2_t33_650M_UR50D](https://huggingface.co/facebook/esm2_t33_650M_UR50D) and put it in `ckpts/esm2-650m`.
+- Download the LLM checkpoint [BioMedGPT-LM](https://huggingface.co/PharMolix/BioMedGPT-LM-7B) and put it in `ckpts/biomedgpt-lm`. If you intend to perform evaluation only, you can just download the configuration files.
+- Download the fine-tuned checkpoint [MutaPLM](https://huggingface.co/PharMolix/MutaPLM) and put it in `ckpts/mutaplm`. 
 
 
 #### Implementation
@@ -51,15 +50,21 @@ For evaluating MutaPLM on mutation explanation, run the following script:
 bash scripts/test/mutaplm_explain.sh
 ```
 
-For evaluating MutaPLM on mutation explanation, run the following script:
+For evaluating MutaPLM on mutation engineering, run the following script:
 
 ```bash
 bash scripts/test/mutaplm_engineer.sh
 ```
 
-For the fitness optimization experiments, run the following script:
-
-```bash
-bash scripts/optimize/mutaplm.sh
+#### Citation
 ```
-
+@misc{luo2024mutaplm,
+      title={MutaPLM: Protein Language Modeling for Mutation Explanation and Engineering}, 
+      author={Yizhen Luo and Zikun Nie and Massimo Hong and Suyuan Zhao and Hao Zhou and Zaiqing Nie},
+      year={2024},
+      eprint={2410.22949},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2410.22949}, 
+}
+```
