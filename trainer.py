@@ -63,7 +63,7 @@ class Trainer(object):
         # distributed params
         parser.add_argument("--distributed", action="store_true")
         parser.add_argument('--world_size', type=int, default=2, help='number of distributed processes')
-        parser.add_argument('--local_rank', type=int, default=0)
+        parser.add_argument('--local-rank', type=int, default=0)
 
         return parser
 
@@ -141,7 +141,7 @@ class Trainer(object):
 
         if self.args.model_checkpoint is not None:
             logger.info(f"Load model checkpoint from {self.args.model_checkpoint}")
-            state_dict = torch.load(open(self.args.model_checkpoint, "rb"), map_location=torch.device("cpu"))["model"]
+            state_dict = torch.load(open(self.args.model_checkpoint, "rb"), map_location=torch.device("cpu"))
             # NOTE: change back to state_dict["model"]
             self.model.load_state_dict(state_dict["model"], strict=True)
         self.optimizer = torch.optim.AdamW(params=self.model.parameters(), lr=self.args.lr, weight_decay=self.args.weight_decay)
@@ -238,7 +238,7 @@ class Trainer(object):
         header = 'Train Epoch: [{}]'.format(epoch)
 
         self.model.train()
-        for i, data in enumerate(metric_logger.log_every(self.train_dataloader, 200, header)):
+        for i, data in enumerate(metric_logger.log_every(self.train_dataloader, 5, header)):
             with autocast(dtype=torch.bfloat16):
                 if not hasattr(self.model_without_ddp, "forward_fn"):
                     loss, output = self.model(*data)

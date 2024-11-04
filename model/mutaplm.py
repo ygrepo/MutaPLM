@@ -659,7 +659,7 @@ class MutaPLM(nn.Module):
                     attention_mask=attn_mask_t2m,
                     output_hidden_states=True,
                     return_dict=True
-                ).hidden_states[-1]
+                ).hidden_states
                 soft_output = outputs[soft_ids_t2m].contiguous()
                 soft_output = self.proj_text(soft_output.view(len(protein1), self.num_query_tokens_protein2, -1))
                 protein = self.protein_tokenizer(
