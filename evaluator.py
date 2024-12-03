@@ -100,7 +100,7 @@ class MutaExplainEvaluator(Evaluator):
         for i, data in enumerate(tqdm(self.dataloader)):
             with torch.no_grad():
                 with autocast(dtype=torch.bfloat16):
-                    preds_func, preds_mut = self.model.generate(data[0], data[1], data[3], pfunction=data[4])
+                    preds_func, preds_mut = self.model.generate(data[0], data[1], data[5], pfunction=data[4])
                     for j in range(len(data[-1])):
                         all_preds_func.append(preds_func[j])
                         all_labels_func.append(data[4][j])
