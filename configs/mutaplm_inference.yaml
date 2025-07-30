@@ -1,5 +1,5 @@
 protein_model: "./ckpts/esm2-650m"
-llama_ckpt: "./ckpts/biomedgpt-lm"
+llama_ckpt: "./ckpts/biomedgpt-lm-7b"
 num_query_tokens_protein1: 64
 num_query_tokens_protein2: 64
 ca_num_head: 8

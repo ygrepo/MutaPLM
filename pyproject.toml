@@ -1,0 +1,38 @@
+[project]
+description = "MutaPLM experiment environment"
+name = "mutaplm"
+requires-python = ">=3.11,<3.12"
+version = "0.1.0"
+
+dependencies = [
+  # ──  Mac Intel: last wheel that exists ───────────────────────────────
+  "torch<2.3; sys_platform == 'darwin' and platform_machine == 'x86_64'", # ──  Everyone else (ARM‑Mac, Windows) just use latest on PyPI ────────
+  "torch; sys_platform != 'darwin' or platform_machine != 'x86_64'", # ──  The rest of your stack ──────────────────────────────────────────
+  "transformers",
+  "peft",
+  "pandas",
+  "numpy",
+  "scipy",
+  "evo_prot_grad",
+  "nltk",
+  "rouge-score",
+  "sequence-models",
+  "scikit-learn",
+]
+
+# ── 1. CUDA‑11.7 wheels for Linux/GPU boxes ────────────────────────────
+[[tool.uv.index]]
+explicit = true # only packages we map below come from here
+name = "pytorch-cu117" 
+url = "https://download.pytorch.org/whl/cu117" 
+
+# ── 2. Route *torch* to that index on Linux x86‑64 only ────────────────
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cu117",
+    marker = "sys_platform == 'linux' and platform_machine == 'x86_64'" }
+]
+
+# ── 3. Keep prerelease/nightly wheels out of the solve ─────────────────
+[tool.uv]
+prerelease = "disallow"

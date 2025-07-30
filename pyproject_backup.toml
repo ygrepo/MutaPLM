@@ -1,0 +1,20 @@
+# --- pyproject.toml (only the uv‑specific bits shown) ------------------------
+
+[[tool.uv.index]] # CUDA 11.7 wheels for Linux x86‑64
+explicit = true # only torch comes from here
+name = "pytorch-cu117" 
+url = "https://download.pytorch.org/whl/cu117" 
+
+[[tool.uv.index]] # CPU‑only wheels for Intel macOS
+explicit = true
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+
+[tool.uv.sources] # per‑platform routing *uses `marker`*
+torch = [
+  {index = "pytorch-cu117", marker = "sys_platform == 'linux'  and platform_machine == 'x86_64'"},
+  {index = "pytorch-cpu", marker = "sys_platform == 'darwin' and platform_machine == 'x86_64'"},
+]
+
+[tool.uv]
+prerelease = "disallow" # keeps nightly builds out of the resolver
