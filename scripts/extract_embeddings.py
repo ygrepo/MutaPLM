@@ -84,7 +84,7 @@ def check(model):
         logger.info(n, p.mean().item(), p.std().item())
 
 @torch.no_grad()
-def fused_pre_llm(model: MutaPLM, wt: str, mut: str):
+def fused_pre_llm(model, wt: str, mut: str):
     # ESM→LLM pooled tokens
     p1, p2 = model._encode_protein([wt], [mut])  # each: [1, Q, Hllm]
     p1_mean = p1.mean(dim=1)                     # [1, Hllm]
@@ -92,7 +92,6 @@ def fused_pre_llm(model: MutaPLM, wt: str, mut: str):
     delta    = p2_mean - p1_mean                 # [1, Hllm]
     # Simple fusions you can try:
     fused_cat   = torch.cat([p1_mean, p2_mean, delta], dim=-1)  # [1, 3*Hllm]
-    fused_delta = delta                                         # [1, Hllm]
     return {
         "esm_llm_wt_tokens": p1, "esm_llm_mut_tokens": p2,
         "esm_llm_wt": p1_mean, "esm_llm_mut": p2_mean,
@@ -216,7 +215,7 @@ def get_fused(model, wt, mut, site):
     return vec, delta
 
 
-def s(model):
+def test_fused_embeddings(model):
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
     wildtype_protein = "MASDAAAEPSSGVTHPPRYVIGYALAPKKQQSFIQPSLVAQAASRGMDLVPVDASQPLAEQGPFHLLIHALYGDDWRAQLVAFAARHPAVPIVDPPHAIDRLHNRISMLQVVSELDHAADQDSTFGIPSQVVVYDAAALADFGLLAALRFPLIAKPLVADGTAKSHKMSLVYHREGLGKLRPPLVLQEFVNHGGVIFKVYVVGGHVTCVKRRSLPDVSPEDDASAQGSVSFSQVSNLPTERTAEEYYGEKSLEDAVVPPAAFINQIAGGLRRALGLQLFNFDMIRDVRAGDRYLVIDINYFPGYAKMPGYETVLTDFFWEMVHKDGVGNQQEEKGANHVVVK"
