@@ -1,13 +1,11 @@
-# scripts/extract_embeddings.py
+# scripts/create_load_model.py
 import sys
 from pathlib import Path
 
 # Make imports robust regardless of CWD (repo layout: <repo>/{model,scripts,configs,...})
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
-
-import yaml
-import torch
+from model.model_util import select_device, create_model, load_model, check   
 import argparse
 import logging
 from datetime import datetime
@@ -35,65 +33,6 @@ def parse_args():
     p.add_argument("--checkpoint_path", type=str, default=str(REPO_ROOT / "ckpts" / "mutaplm.pth"))
     return p.parse_args()
 
-def select_device(pref: str) -> torch.device:
-    pref = (pref or "auto").lower()
-    if pref.startswith("cuda"):
-        return torch.device(pref) if torch.cuda.is_available() else torch.device("cpu")
-    if pref == "mps":
-        return torch.device("mps") if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available() else torch.device("cpu")
-    if pref == "cpu":
-        return torch.device("cpu")
-    # auto
-    if torch.cuda.is_available():
-        return torch.device("cuda")
-    if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
-        return torch.device("mps")
-    return torch.device("cpu")
-
-def create_model(cfg_path: Path, device):
-    from model.mutaplm import MutaPLM  # after sys.path insert
-    
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-
-    if not cfg_path.exists():
-        raise FileNotFoundError(f"Config not found: {cfg_path}")
-
-    with cfg_path.open() as f:
-        model_cfg = yaml.safe_load(f)
-
-    model_cfg["device"] = device
-    model = MutaPLM(**model_cfg).to(device).eval()
-
-    # Keep CPU in float32 (your class defaults to bf16 for from_pretrained)
-    if device.type != "cuda":
-        model.float()
-
-    logger.info("Model loaded successfully.")
-
-def load_model(model, checkpoint_path):
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-    logger.info(f"Loading model checkpoint from {checkpoint_path}")
-    new_ckpt = torch.load(open(checkpoint_path, "rb"), map_location="cuda")["model"]
-    logger.info("Model checkpoint loaded successfully.")
-    logger.info("Loading model state dict...")
-    model.load_state_dict(new_ckpt, strict=False)
-    logger.info("Model state dict loaded successfully.")
-
-    model.eval()
-
-def check(model):
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-
-    # Should NOT be near-xavier random std; vocab embeddings should have non-trivial stats
-    emb = next(model.llm.parameters()).detach()
-    logger.info(emb.mean().item(), emb.std().item())
-    
-    for n in ["proj_protein1.weight", "query_protein1", "soft_tokens"]:
-        p = dict(model.named_parameters())[n].detach()
-        logger.info(n, p.mean().item(), p.std().item())
 
 # def test_fused_embeddings(model):
 #     logger = logging.getLogger(__name__)
@@ -123,8 +62,8 @@ def main():
     device = select_device(args.device)
     logger.info(f"Using device: {device}")
     model = create_model(Path(args.config), device)
-    load_model(model, args.checkpoint_path)
-    check(model)
+    # load_model(model, args.checkpoint_path)
+    # check(model)
 
     #test_fused_embeddings(model)
     #test_fused_soft_embeddings(model)

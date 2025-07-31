@@ -1,6 +1,8 @@
 import torch
 import torch.nn.functional as F
 
+import logging
+
 SYS_INFER = (
     "You are an expert at biology and life science. Now a user gives you several protein sequences "
     "and mutations. Please follow user instructions and answer their questions."
@@ -323,4 +325,137 @@ def get_fused(model, wt, mut, site):
 
     return vec, delta
 
+def check_mutaplm_min(model) -> None:
+    log = logging.getLogger("mutaplm.check")
+    log.setLevel(logging.INFO)
+
+    if model is None:
+        log.error("model is None")
+        return
+
+    def stat(name, t):
+        if t is None:
+            log.warning("%s: <missing>", name)
+            return
+        t = t.detach().float()
+        log.info("%-22s mean=%+.6f std=%.6f shape=%s req_grad=%s",
+                 name, t.mean().item(), t.std().item(), tuple(t.shape),
+                 getattr(t, "requires_grad", False))
+
+    # LLM input embeddings
+    try:
+        emb_w = model.llm.get_input_embeddings().weight
+        stat("llm.emb.weight", emb_w)
+    except Exception as e:
+        log.error("llm input embeddings not accessible: %s", e)
+
+    # Key bridge params
+    stat("proj_protein1.weight", getattr(getattr(model, "proj_protein1", None), "weight", None))
+    stat("proj_protein2.weight", getattr(getattr(model, "proj_protein2", None), "weight", None))
+    stat("proj_text.weight",     getattr(getattr(model, "proj_text",     None), "weight", None))
+    stat("query_protein1", getattr(model, "query_protein1", None))
+    stat("query_protein2", getattr(model, "query_protein2", None))
+    stat("soft_tokens",    getattr(model, "soft_tokens", None))
+
+    # Shape consistency
+    try:
+        H_esm = model.protein_model.config.hidden_size
+        H_llm = model.llm.config.hidden_size
+        W1 = getattr(getattr(model, "proj_protein1", None), "weight", None)
+        W2 = getattr(getattr(model, "proj_protein2", None), "weight", None)
+        Wt = getattr(getattr(model, "proj_text",     None), "weight", None)
+
+        if W1 is not None and W1.shape != (H_llm, H_esm):
+            log.error("proj_protein1.weight %s != (%d, %d)", tuple(W1.shape), H_llm, H_esm)
+        if W2 is not None and W2.shape != (H_llm, H_esm):
+            log.error("proj_protein2.weight %s != (%d, %d)", tuple(W2.shape), H_llm, H_esm)
+        if Wt is not None and Wt.shape != (H_esm, H_llm):
+            log.error("proj_text.weight %s != (%d, %d)", tuple(Wt.shape), H_esm, H_llm)
+    except Exception as e:
+        log.warning("shape checks skipped: %s", e)
+
+    # Smoke test: one tiny forward to ensure no NaNs
+    try:
+        v = llm_context_embed_abs(model, "M")  # single Met is valid for ESM
+        if torch.isnan(v).any():
+            log.error("NaNs in llm_context_embed_abs('M')")
+        else:
+            log.info("smoke test ok: llm_context_embed_abs('M') -> %s", tuple(v.shape))
+    except Exception as e:
+        log.error("smoke test failed: %s", e)
+
     
+def check(model):
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+
+    if model is None or not hasattr(model, "llm"):
+        logger.error("model or model.llm is missing")
+        return
+
+    emb = next(model.llm.parameters(), None)
+    if emb is None:
+        logger.warning("llm has no parameters")
+    else:
+        emb = emb.detach().float()
+        logger.info("llm[first param]: mean=%.6f std=%.6f", emb.mean().item(), emb.std().item())
+
+    name_to_param = dict(model.named_parameters())
+    for n in ["proj_protein1.weight", "query_protein1", "soft_tokens"]:
+        p = name_to_param.get(n)
+        if p is None:
+            logger.warning("param '%s' not found", n)
+            continue
+        p = p.detach().float()
+        logger.info("%s: mean=%.6f std=%.6f", n, p.mean().item(), p.std().item())
+
+    
+
+def create_model(cfg_path: Path, device):
+    from model.mutaplm import MutaPLM  # after sys.path insert
+    
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+
+    if not cfg_path.exists():
+        raise FileNotFoundError(f"Config not found: {cfg_path}")
+
+    with cfg_path.open() as f:
+        model_cfg = yaml.safe_load(f)
+
+    model_cfg["device"] = device
+    model = MutaPLM(**model_cfg).to(device).eval()
+
+    # Keep CPU in float32 (your class defaults to bf16 for from_pretrained)
+    if device.type != "cuda":
+        model.float()
+
+    logger.info("Model loaded successfully.")
+
+def load_model(model, checkpoint_path):
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+    logger.info(f"Loading model checkpoint from {checkpoint_path}")
+    new_ckpt = torch.load(open(checkpoint_path, "rb"), map_location="cuda")["model"]
+    logger.info("Model checkpoint loaded successfully.")
+    logger.info("Loading model state dict...")
+    model.load_state_dict(new_ckpt, strict=False)
+    logger.info("Model state dict loaded successfully.")
+
+    model.eval()
+    
+
+def select_device(pref: str) -> torch.device:
+    pref = (pref or "auto").lower()
+    if pref.startswith("cuda"):
+        return torch.device(pref) if torch.cuda.is_available() else torch.device("cpu")
+    if pref == "mps":
+        return torch.device("mps") if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available() else torch.device("cpu")
+    if pref == "cpu":
+        return torch.device("cpu")
+    # auto
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
+        return torch.device("mps")
+    return torch.device("cpu")
