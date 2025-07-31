@@ -33,6 +33,7 @@ def parse_args():
     p.add_argument("--log_level", type=str, default="INFO")
     p.add_argument("--config", type=str, default=str(REPO_ROOT / "configs" / "mutaplm_inference.yaml"))
     p.add_argument("--device", type=str, default="auto", help="auto|cpu|cuda|cuda:N|mps")
+    p.add_argument("--checkpoint_path", type=str, default=str(REPO_ROOT / "ckpts" / "mutaplm.pth"))
     return p.parse_args()
 
 def select_device(pref: str) -> torch.device:
@@ -70,6 +71,11 @@ def create_model(cfg_path: Path, device):
         model.float()
 
     logger.info("Model loaded successfully.")
+
+def load_model(model, checkpoint_path):
+    new_ckpt = torch.load(open(checkpoint_path, "rb"), map_location="cuda")["model"]
+    model.load_state_dict(new_ckpt, strict=False)
+    model.eval()
 
 def check(model):
     logger = logging.getLogger(__name__)
@@ -195,6 +201,103 @@ def fused_in_llm(model, wt: str, mut: str, *,
         "spans": {"p1": (p1_start, p1_end), "p2": (p2_start, p2_end)},
     }
 
+import torch
+
+@torch.no_grad()
+def soft_mutation_embed(model, wt: str, *,
+                        func_text: str,
+                        mut_text: str):
+    """
+    Returns a single [1, H_llm] vector summarizing the mutation via the soft-token span.
+
+    - Uses the inference helper that exposes batched_regress_ids (mask for soft tokens).
+    - Does NOT require model.t2m=True.
+    """
+    device = model.device if getattr(model, "device", None) is not None else next(model.parameters()).device
+
+    # 1) Get pooled ESM->LLM tokens for the WT only
+    with model.maybe_autocast():  # autocast if CUDA, nullcontext if CPU
+        p1 = model._encode_protein([wt], None)   # [1, Q1, H_llm]
+
+    # 2) Build the inference sequence with mut_text to obtain soft-token mask
+    # predict_function must be provided; muta_prompt is not used in this branch
+    be, am, soft_ids = model._wrapped_sentence_inference(
+        protein1_embeds=p1,
+        protein2_embeds=None,
+        muta_prompt=[""],                       # unused here
+        predict_function=[func_text],           # your function text (no </s> needed)
+        mut_text=[mut_text],                    # textual description of the mutation/effect
+    )
+    # shapes: be [1, T, H_llm], am [1, T], soft_ids [1, T] (bool)
+
+    # 3) LLM forward, then mean-pool over the soft-token positions
+    with model.maybe_autocast():
+        hs_last = model.llm(
+            inputs_embeds=be,
+            attention_mask=am,
+            output_hidden_states=True,
+            return_dict=True
+        ).hidden_states[-1]                     # [1, T, H_llm]
+
+    # Select the soft-token block; ensure we have at least one position
+    n_soft = int(soft_ids.sum().item())
+    assert n_soft > 0, "soft_mutation_embed: soft_ids mask is empty."
+    soft_vec = hs_last[soft_ids].view(1, n_soft, hs_last.size(-1)).mean(dim=1)  # [1, H_llm]
+    return soft_vec
+
+@torch.no_grad()
+def fused_in_llm_plus_soft(model, wt: str, mut: str, *,
+                           func_text: str = "Describe the protein function.",
+                           muta_prompt: str = "Describe the mutation impact.",
+                           soft_mut_text: str | None = None):
+    """
+    - Builds the fused vector from fused_in_llm (WT_ctx, Mut_ctx, Δ_ctx, pre-LLM means).
+    - Adds a soft-token mutation vector and concatenates it.
+    Returns a dict with all parts plus 'fused_plus_soft'.
+    """
+    # 1) Base fused vectors (WT/Mut contextual + pre-LLM)
+    base = fused_in_llm(model, wt, mut, func_text=func_text, muta_prompt=muta_prompt)
+    fused = base["fused"]               # [1, 5*H_llm]
+
+    # 2) Soft-token mutation embedding (uses WT only + mut_text)
+    # If no custom text is provided, derive a minimal one from mut vs wt (optional; here we require explicit)
+    if soft_mut_text is None:
+        # A safe default; you can pass something richer (e.g., "A70K substitution in catalytic pocket")
+        soft_mut_text = "Summarize the mutation effect."
+
+    soft_vec = soft_mutation_embed(model, wt, func_text=func_text, mut_text=soft_mut_text)  # [1, H_llm]
+
+    # 3) Concatenate
+    fused_plus_soft = torch.cat([fused, soft_vec], dim=-1)  # [1, 6*H_llm]
+
+    base.update({
+        "soft_mut_vec": soft_vec,          # [1, H_llm]
+        "fused_plus_soft": fused_plus_soft # [1, 6*H_llm]
+    })
+    return base
+
+def fused_soft(model, wt, mut, site):
+    model.eval()
+    if model.device.type != "cuda":
+        model.float()  # keep CPU in fp32
+
+    site = "A70K"
+    func_text = "Describe the protein's function."           # or your stage-1 predicted function
+    soft_mut_text = f"Mutation {site[0]}→{site[-1]} at position {site[1:-1]}."
+
+    out = fused_in_llm_plus_soft(
+        model,
+        wt=wt,
+        mut=mut,
+        func_text=func_text,
+        muta_prompt=f"Mutation {site[0]}→{site[-1]} at position {site[1:-1]}.",
+        soft_mut_text=soft_mut_text
+    )
+
+    vec = out["fused_plus_soft"]       # [1, 6*H_llm]
+    soft_only = out["soft_mut_vec"]    # [1, H_llm]
+    return vec, soft_only
+
 def get_fused(model, wt, mut, site):
     #fusedA = fused_pre_llm(model, wt, mut)
     model.eval()
@@ -225,6 +328,16 @@ def test_fused_embeddings(model):
     logger.info(f"Fused embeddings: {vec.shape}")
     logger.info(f"Mutation delta: {delta.shape}") 
 
+def test_fused_soft_embeddings(model):
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+    wildtype_protein = "MASDAAAEPSSGVTHPPRYVIGYALAPKKQQSFIQPSLVAQAASRGMDLVPVDASQPLAEQGPFHLLIHALYGDDWRAQLVAFAARHPAVPIVDPPHAIDRLHNRISMLQVVSELDHAADQDSTFGIPSQVVVYDAAALADFGLLAALRFPLIAKPLVADGTAKSHKMSLVYHREGLGKLRPPLVLQEFVNHGGVIFKVYVVGGHVTCVKRRSLPDVSPEDDASAQGSVSFSQVSNLPTERTAEEYYGEKSLEDAVVPPAAFINQIAGGLRRALGLQLFNFDMIRDVRAGDRYLVIDINYFPGYAKMPGYETVLTDFFWEMVHKDGVGNQQEEKGANHVVVK"
+    site = "A70K"
+    mutated_protein = wildtype_protein[:int(site[1:-1])-1] + site[-1] + wildtype_protein[int(site[1:-1]):]
+    (vec_soft, soft_only) = fused_soft(model, wildtype_protein, mutated_protein, site)
+    logger.info(f"Fused soft embeddings: {vec_soft.shape}")
+    logger.info(f"Soft only: {soft_only.shape}") 
+
 
 def main():
 
@@ -233,9 +346,11 @@ def main():
     device = select_device(args.device)
     logger.info(f"Using device: {device}")
     model = create_model(Path(args.config), device)
+    load_model(model, args.checkpoint_path)
     check(model)
 
     test_fused_embeddings(model)
+    test_fused_soft_embeddings(model)
     
 if __name__ == "__main__":
     #print("CWD:", os.getcwd())
