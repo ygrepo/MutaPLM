@@ -64,12 +64,14 @@ def main():
 
     with cfg_path.open() as f:
         model_cfg = yaml.safe_load(f)
+    #model_config_path = "./configs/mutaplm_inference.yaml"
+    model_cfg = yaml.load(open(model_config_path, "r"), Loader=yaml.Loader)
 
-    # Make relative paths in YAML resolve from repo root (optional but handy)
-    for k in ("protein_model", "llama_ckpt", "llama_pretrained_ckpt"):
-        v = model_cfg.get(k)
-        if isinstance(v, str) and v.startswith("."):
-            model_cfg[k] = str((REPO_ROOT / v).resolve())
+    # # Make relative paths in YAML resolve from repo root (optional but handy)
+    # for k in ("protein_model", "llama_ckpt", "llama_pretrained_ckpt"):
+    #     v = model_cfg.get(k)
+    #     if isinstance(v, str) and v.startswith("."):
+    #         model_cfg[k] = str((REPO_ROOT / v).resolve())
 
     model_cfg["device"] = device
     model = MutaPLM(**model_cfg).to(device).eval()
