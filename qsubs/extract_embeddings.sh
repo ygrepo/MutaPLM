@@ -12,16 +12,35 @@
 #BSUB -o logs/embeddings.%J.out
 #BSUB -e logs/embeddings.%J.err
 
+set -euo pipefail
+
 module purge
 module load cuda/11.8 cudnn
 module load anaconda3/latest
-ml proxies/1
+ml proxies/1 || true
+
 export PROJ=/sc/arion/projects/DiseaseGeneCell/Huang_lab_data
 export CONDARC="$PROJ/conda/condarc"
+# export HF_HOME="$PROJ/.cache/huggingface"
+# export TRANSFORMERS_CACHE="$HF_HOME/transformers"
+# export TORCH_HOME="$PROJ/.cache/torch"
+# export TMPDIR="$PROJ/.tmp"
+# mkdir -p logs "$HF_HOME" "$TRANSFORMERS_CACHE" "$TORCH_HOME" "$TMPDIR"
+
+conda activate "$PROJ/.conda/envs/mutaplm_env"
+
+# verify PyTorch is built for CUDA 11.8
+# python - <<'PY'
+# import torch
+# print("torch:", torch.__version__, "cuda_available:", torch.cuda.is_available(), "cuda:", torch.version.cuda)
+# PY
+
+cd /sc/arion/projects/DiseaseGeneCell/Huang_lab_project/MutaPLM  # adjust if needed
+
 
 #source /hpc/packages/minerva-centos7/anaconda3/2023.09/etc/profile.d/conda.sh
 #conda activate mutaplm
-conda activate /sc/arion/projects/DiseaseGeneCell/Huang_lab_data/.conda/envs/mutaplm_env
+#conda activate /sc/arion/projects/DiseaseGeneCell/Huang_lab_data/.conda/envs/mutaplm_env
 
 DATASET_DIR="mutadescribe_data"
 DATA_FN="${DATASET_DIR}/structural_split/train.csv"
