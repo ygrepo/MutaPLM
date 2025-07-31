@@ -65,7 +65,7 @@ def main():
     with cfg_path.open() as f:
         model_cfg = yaml.safe_load(f)
     #model_config_path = "./configs/mutaplm_inference.yaml"
-    model_cfg = yaml.load(open(model_config_path, "r"), Loader=yaml.Loader)
+    #model_cfg = yaml.load(open(model_config_path, "r"), Loader=yaml.Loader)
 
     # # Make relative paths in YAML resolve from repo root (optional but handy)
     # for k in ("protein_model", "llama_ckpt", "llama_pretrained_ckpt"):
