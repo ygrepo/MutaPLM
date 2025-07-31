@@ -446,7 +446,7 @@ def load_model(model, checkpoint_path):
     logger.info("Model state dict loaded successfully.")
     model.eval()
     
-def load_model_safely(model, checkpoint_path, device="cuda", strict=False):
+def load_model_safely(model, checkpoint_path, device="cuda", weights_only=True, strict=True):
 
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
@@ -455,7 +455,7 @@ def load_model_safely(model, checkpoint_path, device="cuda", strict=False):
     add_safe_globals([getattr])  # add more if error lists others
 
     # Load on CPU to avoid OOM during deserialization
-    ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
+    ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=weights_only)
 
     state_dict = ckpt.get("model", ckpt.get("state_dict", ckpt))
 

@@ -62,7 +62,8 @@ def main():
     device = select_device(args.device)
     logger.info(f"Using device: {device}")
     model = create_model(Path(args.config), device)
-    load_model_safely(model, args.checkpoint_path)
+    load_model_safely(model, args.checkpoint_path, device=device, weights_only=False, strict=False)
+    logger.info("Model loaded successfully.")
     # check(model)
 
     #test_fused_embeddings(model)
