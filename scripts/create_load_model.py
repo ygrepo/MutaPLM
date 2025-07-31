@@ -5,7 +5,7 @@ from pathlib import Path
 # Make imports robust regardless of CWD (repo layout: <repo>/{model,scripts,configs,...})
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
-from model.model_util import select_device, create_model, load_model_safely   
+from model.model_util import select_device, create_model, load_model_safely  , load_model
 import argparse
 import logging
 from datetime import datetime
@@ -62,7 +62,8 @@ def main():
     device = select_device(args.device)
     logger.info(f"Using device: {device}")
     model = create_model(Path(args.config), device)
-    load_model_safely(model, args.checkpoint_path, device=device, weights_only=False, strict=False)
+    #load_model_safely(model, args.checkpoint_path, device=device, weights_only=False, strict=False)
+    model = load_model(model, args.checkpoint_path)
     logger.info("Model loaded successfully.")
     # check(model)
 
@@ -70,5 +71,4 @@ def main():
     #test_fused_soft_embeddings(model)
     
 if __name__ == "__main__":
-    #print("CWD:", os.getcwd())
     main()
