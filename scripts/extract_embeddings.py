@@ -26,6 +26,7 @@ def setup_logging(log_dir: Path, log_level: str = "INFO") -> logging.Logger:
     logger.info(f"Logging to {log_file}")
     return logger
 
+
 def parse_args():
     p = argparse.ArgumentParser(description="Extract embeddings from protein sequences")
     p.add_argument("--log_dir", type=str, default="logs")
@@ -49,29 +50,17 @@ def select_device(pref: str) -> torch.device:
         return torch.device("mps")
     return torch.device("cpu")
 
-def main():
+def create_model(cfg_path, device):
     from model.mutaplm import MutaPLM  # after sys.path insert
+    
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
 
-    args = parse_args()
-    logger = setup_logging(Path(args.log_dir), args.log_level)
-
-    device = select_device(args.device)
-    logger.info(f"Using device: {device}")
-
-    cfg_path = Path(args.config)
     if not cfg_path.exists():
         raise FileNotFoundError(f"Config not found: {cfg_path}")
 
     with cfg_path.open() as f:
         model_cfg = yaml.safe_load(f)
-    #model_config_path = "./configs/mutaplm_inference.yaml"
-    #model_cfg = yaml.load(open(model_config_path, "r"), Loader=yaml.Loader)
-
-    # # Make relative paths in YAML resolve from repo root (optional but handy)
-    # for k in ("protein_model", "llama_ckpt", "llama_pretrained_ckpt"):
-    #     v = model_cfg.get(k)
-    #     if isinstance(v, str) and v.startswith("."):
-    #         model_cfg[k] = str((REPO_ROOT / v).resolve())
 
     model_cfg["device"] = device
     model = MutaPLM(**model_cfg).to(device).eval()
@@ -82,6 +71,29 @@ def main():
 
     logger.info("Model loaded successfully.")
 
+def check(model):
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+
+    # Should NOT be near-xavier random std; vocab embeddings should have non-trivial stats
+    emb = next(model.llm.parameters()).detach()
+    logger.info(emb.mean().item(), emb.std().item())
+    
+    for n in ["proj_protein1.weight", "query_protein1", "soft_tokens"]:
+    p = dict(model.named_parameters())[n].detach()
+    logger.info(n, p.mean().item(), p.std().item())
+
+    
+def main():
+
+    args = parse_args()
+    logger = setup_logging(Path(args.log_dir), args.log_level)
+    device = select_device(args.device)
+    logger.info(f"Using device: {device}")
+    model = create_model(args.config, device)
+    check(model)
+
+ 
 if __name__ == "__main__":
-    print("CWD:", os.getcwd())
+    #print("CWD:", os.getcwd())
     main()
