@@ -1,5 +1,4 @@
 # scripts/extract_embeddings.py
-import os
 import sys
 from pathlib import Path
 
@@ -204,7 +203,6 @@ def fused_in_llm(model, wt: str, mut: str, *,
         "spans": {"p1": (p1_start, p1_end), "p2": (p2_start, p2_end)},
     }
 
-import torch
 
 @torch.no_grad()
 def soft_mutation_embed(model, wt: str, *,
