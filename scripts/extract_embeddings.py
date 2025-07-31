@@ -50,7 +50,7 @@ def select_device(pref: str) -> torch.device:
         return torch.device("mps")
     return torch.device("cpu")
 
-def create_model(cfg_path, device):
+def create_model(cfg_path: Path, device):
     from model.mutaplm import MutaPLM  # after sys.path insert
     
     logger = logging.getLogger(__name__)
@@ -232,7 +232,7 @@ def main():
     logger = setup_logging(Path(args.log_dir), args.log_level)
     device = select_device(args.device)
     logger.info(f"Using device: {device}")
-    model = create_model(args.config, device)
+    model = create_model(Path(args.config), device)
     check(model)
 
     test_fused_embeddings(model)
