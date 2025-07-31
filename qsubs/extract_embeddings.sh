@@ -29,6 +29,6 @@ LOG_DIR="logs"
 LOG_LEVEL="INFO"
 SEED=42
 
-/hpc/users/greaty01/.conda/envs/drug_discovery_env/bin/python src/extract_embeddings.py \
+/hpc/users/greaty01/.conda/envs/drug_discovery_env/bin/python scripts/extract_embeddings.py \
   --log_dir "$LOG_DIR" \
   --log_level "$LOG_LEVEL"
