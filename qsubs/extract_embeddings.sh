@@ -7,7 +7,8 @@
 #BSUB -q gpu
 #BSUB -gpu "num=1"
 #BSUB -n 4
-#BSUB -R "rusage[mem=3000]"
+#BSUB -M 9000
+#BSUB -R "rusage[mem=9000]"
 #BSUB -W 2:00
 #BSUB -o logs/embeddings.%J.out
 #BSUB -e logs/embeddings.%J.err
@@ -48,15 +49,8 @@ cd /sc/arion/projects/DiseaseGeneCell/Huang_lab_project/MutaPLM  # adjust if nee
 #conda activate mutaplm
 #conda activate /sc/arion/projects/DiseaseGeneCell/Huang_lab_data/.conda/envs/mutaplm_env
 
-DATASET_DIR="mutadescribe_data"
-DATA_FN="${DATASET_DIR}/structural_split/train.csv"
-OUTPUT_DIR="output/data"
-OUTPUT_FN="${OUTPUT_DIR}/structural_split_train_with_embeddings.csv"
-MODEL_NAME="facebook/esm2_t6_8M_UR50D"
-N=15
 LOG_DIR="logs"
 LOG_LEVEL="INFO"
-SEED=42
 
 /sc/arion/projects/DiseaseGeneCell/Huang_lab_data/.conda/envs/mutaplm_env/bin/python \
   scripts/extract_embeddings.py \
