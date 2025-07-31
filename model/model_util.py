@@ -1,5 +1,7 @@
 import torch
 import torch.nn.functional as F
+from torch.serialization import add_safe_globals
+import torch, re
 
 import logging
 
@@ -442,6 +444,33 @@ def load_model(model, checkpoint_path):
     model.load_state_dict(new_ckpt, strict=False)
     logger.info("Model state dict loaded successfully.")
     model.eval()
+    
+def load_model_safely(model, checkpoint_path, device="cuda", strict=False):
+
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+    logger.info(f"Loading model checkpoint from {checkpoint_path}")
+    # Allowlist the global(s) the checkpoint needs
+    add_safe_globals([getattr])  # add more if error lists others
+
+    # Load on CPU to avoid OOM during deserialization
+    ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
+
+    state_dict = ckpt.get("model", ckpt.get("state_dict", ckpt))
+
+    # Strip common prefixes from DDP/compile/PEFT saves
+    cleaned = {}
+    for k, v in state_dict.items():
+        k = re.sub(r"^(module\.|_orig_mod\.)", "", k)
+        cleaned[k] = v
+
+    missing, unexpected = model.load_state_dict(cleaned, strict=strict)
+    logger.info(f"Missing keys: {len(missing)}, Unexpected keys: {len(unexpected)}")
+    logger.info("Model state dict loaded successfully.")
+
+    model.to(device)
+    model.eval()
+    return model
     
 
 def select_device(pref: str) -> torch.device:
