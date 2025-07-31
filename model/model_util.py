@@ -441,7 +441,6 @@ def load_model(model, checkpoint_path):
     logger.info("Loading model state dict...")
     model.load_state_dict(new_ckpt, strict=False)
     logger.info("Model state dict loaded successfully.")
-
     model.eval()
     
 

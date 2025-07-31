@@ -1,8 +1,8 @@
 #!/bin/bash
-# submit_embeddings.sh — submit embedding jobs to LSF GPU queue
+# create_load_model.sh — submit create_load_model jobs to LSF GPU queue
 
 
-#BSUB -J embeddings
+#BSUB -J create_load_model
 #BSUB -P acc_DiseaseGeneCell
 #BSUB -q gpu
 #BSUB -gpu "num=1"
@@ -10,8 +10,8 @@
 #BSUB -n 1
 #BSUB -R "rusage[mem=32000]"
 #BSUB -W 0:30
-#BSUB -o logs/embeddings.%J.out
-#BSUB -e logs/embeddings.%J.err
+#BSUB -o logs/create_load_model.%J.out
+#BSUB -e logs/create_load_model.%J.err
 
 set -euo pipefail
 
