@@ -52,6 +52,7 @@ LOG_DIR="logs"
 LOG_LEVEL="INFO"
 SEED=42
 
-/hpc/users/greaty01/.conda/envs/mutaplm/bin/python scripts/extract_embeddings.py \
+/sc/arion/projects/DiseaseGeneCell/Huang_lab_data/.conda/envs/mutaplm_env/bin/python \
+  scripts/extract_embeddings.py \
   --log_dir "$LOG_DIR" \
   --log_level "$LOG_LEVEL"
