@@ -100,69 +100,94 @@ def fused_pre_llm(model: MutaPLM, wt: str, mut: str):
     }
 
 @torch.no_grad()
-def fused_in_llm(model: MutaPLM, wt: str, mut: str, *, 
+def fused_in_llm(model, wt: str, mut: str, *,
                  func_text: str = "Describe the protein function.",
                  muta_prompt: str = "Describe the mutation impact."):
+    """
+    Returns a dict with contextualized LLM embeddings for WT & Mut and a fused vector.
+
+    Preconditions:
+      - `model` is a MutaPLM with a **pretrained LLM** loaded.
+      - Ideally, the MutaPLM bridge (query tokens, projections, soft tokens) is finetuned.
+      - Call model.eval() beforehand. On CPU, ensure model.float().
+
+    Outputs:
+      - "llm_ctx_wt"  : [1, H_llm]
+      - "llm_ctx_mut" : [1, H_llm]
+      - "llm_ctx_delta": [1, H_llm]
+      - "esm_llm_wt", "esm_llm_mut": [1, H_llm] (pre-LLM pooled)
+      - "fused"       : [1, 5*H_llm] (concat of above)
+      - "spans"       : dict with (start, end) indices for P1/P2 in the LLM sequence
+    """
+    device = model.device if getattr(model, "device", None) is not None else next(model.parameters()).device
 
     # 1) ESM→LLM pooled tokens for WT & Mut
-    p1, p2 = model._encode_protein([wt], [mut])  # [1, Q, Hllm] each
-    Q1 = p1.shape[1]; Q2 = p2.shape[1]
+    #    p1, p2: [1, Q, H_llm] (already projected into LLM space)
+    with model.maybe_autocast():  # safe on CUDA; nullcontext on CPU
+        p1, p2 = model._encode_protein([wt], [mut])
+    Q1, Q2 = p1.shape[1], p2.shape[1]
 
-    # 2) Build the same wrapped sequence the forward pass uses (understanding path)
-    #    We only need wrapped_embeds1 + attn_mask1; the rest is for training losses.
-    text = ["Short answer."]  # any small target text; it's not used for embeddings
-    batched_embeds1, batched_attn_mask1, _ = model._wrapped_sentence_ft(
-        protein1_embeds=p1, 
+    # 2) Build the same wrapped inputs the FT path uses (we only need the first two outputs)
+    #    NOTE: pass func_text without "</s>" (the method will append it internally)
+    dummy_text = ["Short answer."]  # not used for pooling
+    wrapped = model._wrapped_sentence_ft(
+        protein1_embeds=p1,
         protein2_embeds=p2,
-        mut_entry=["[1]"],                          # dummy; only used for t2m losses
-        p_function=[func_text + "</s>"],            # forward_ft appends </s> internally too
+        mut_entry=["[1]"],          # dummy; only used if t2m=True, which we don't need here
+        p_function=[func_text],     # DO NOT append "</s>" here; method does it
         muta_prompt=[muta_prompt],
-        text=text
+        text=dummy_text
     )
-    # shapes: [1, T, Hllm], [1, T]
+    batched_embeds1, batched_attn_mask1 = wrapped[0], wrapped[1]  # [1, T, H_llm], [1, T]
 
-    # 3) LLM forward to get contextual hidden states
-    out = model.llm(
-        inputs_embeds=batched_embeds1,
-        attention_mask=batched_attn_mask1,
-        output_hidden_states=True,
-        return_dict=True,
-    ).hidden_states[-1]                               # [1, T, Hllm]
+    # 3) LLM forward to get contextual hidden states over the whole wrapped sequence
+    with model.maybe_autocast():
+        out = model.llm(
+            inputs_embeds=batched_embeds1,
+            attention_mask=batched_attn_mask1,
+            output_hidden_states=True,
+            return_dict=True
+        ).hidden_states[-1]  # [1, T, H_llm]
 
-    # 4) Compute index ranges for P1 and P2 token spans inside the wrapped sequence
-    sys_str = ("You are an expert at biology and life science. Now a user gives you several "
-               "protein sequences and mutations. Please follow user instructions and answer "
-               "their questions. Based on the following protein sequence, please describe its function.")
+    # 4) Compute exact spans for P1 and P2
+    #     Use the exact SYS string hardcoded in _wrapped_sentence_ft of your class:
+    sys_str = (
+        "You are an expert at biology and life science. Now a user gives you several protein sequences "
+        "and mutations. Please follow user instructions and answer their questions. Based on the following "
+        "protein sequence, please describe its function."
+    )
+    # Token counts (no special tokens)
     sys_len  = len(model.llm_tokenizer(sys_str, add_special_tokens=False).input_ids)
-    func_len = len(model.llm_tokenizer(func_text + "</s>", add_special_tokens=False).input_ids)
+    func_len = len(model.llm_tokenizer(func_text + "</s>", add_special_tokens=False).input_ids)  # they append "</s>"
     mut_len  = len(model.llm_tokenizer(muta_prompt, add_special_tokens=False).input_ids)
 
-    # Layout: [BOS(1), SYS(sys_len), BOP(1), P1(Q1), EOP(1), FUNC(func_len),
-    #          MUT(mut_len), BOM(1), P2(Q2), EOM(1), TEXT(len(text_ids))]
+    # Layout:
+    # [BOS(1), SYS(sys_len), BOP(1), P1(Q1), EOP(1), FUNC(func_len), MUT(mut_len), BOM(1), P2(Q2), EOM(1), TEXT(...)]
     idx = 0
-    idx += 1                    # BOS
-    idx += sys_len              # SYS
-    idx += 1                    # BOP
+    idx += 1                      # BOS
+    idx += sys_len                # SYS
+    idx += 1                      # BOP
     p1_start = idx
-    p1_end   = p1_start + Q1    # exclusive
+    p1_end   = p1_start + Q1
     idx = p1_end
-    idx += 1                    # EOP
-    idx += func_len             # FUNC
-    idx += mut_len              # MUT
-    idx += 1                    # BOM
+    idx += 1                      # EOP
+    idx += func_len               # FUNC
+    idx += mut_len                # MUT
+    idx += 1                      # BOM
     p2_start = idx
     p2_end   = p2_start + Q2
-    # (we don't need the rest for pooling)
+    # (we don't need to advance further for pooling)
 
-    # 5) Pool LLM states over those spans (contextualized WT/Mut embeddings)
-    p1_ctx = out[:, p1_start:p1_end, :].mean(dim=1)   # [1, Hllm]
-    p2_ctx = out[:, p2_start:p2_end, :].mean(dim=1)   # [1, Hllm]
-    delta_ctx = p2_ctx - p1_ctx
+    # 5) Pool the LLM hidden states across P1/P2 spans
+    p1_ctx = out[:, p1_start:p1_end, :].mean(dim=1)  # [1, H_llm]
+    p2_ctx = out[:, p2_start:p2_end, :].mean(dim=1)  # [1, H_llm]
+    delta_ctx = p2_ctx - p1_ctx                      # [1, H_llm]
 
-    # 6) Fuse with the pre‑LLM pooled vectors if you like:
-    p1_mean = p1.mean(dim=1)                          # pre‑LLM pooled
-    p2_mean = p2.mean(dim=1)
-    fused = torch.cat([p1_mean, p2_mean, p1_ctx, p2_ctx, delta_ctx], dim=-1)  # [1, 5*Hllm]
+    # 6) (Optional) also include the pre-LLM pooled vectors
+    p1_mean = p1.mean(dim=1)                         # [1, H_llm]
+    p2_mean = p2.mean(dim=1)                         # [1, H_llm]
+
+    fused = torch.cat([p1_mean, p2_mean, p1_ctx, p2_ctx, delta_ctx], dim=-1)  # [1, 5*H_llm]
 
     return {
         "llm_ctx_wt": p1_ctx, "llm_ctx_mut": p2_ctx, "llm_ctx_delta": delta_ctx,
@@ -171,19 +196,35 @@ def fused_in_llm(model: MutaPLM, wt: str, mut: str, *,
         "spans": {"p1": (p1_start, p1_end), "p2": (p2_start, p2_end)},
     }
 
-
 def get_fused(model, wt, mut, site):
-    fusedA = fused_pre_llm(model, wt, mut)
-    fusedB = fused_in_llm(model, wt, mut, 
-                      func_text="Describe the protein function.",
-                      muta_prompt=f"Mutation {site[0]}→{site[-1]} at position {site[1:-1]}.")
-    return fusedB["fused"]
+    #fusedA = fused_pre_llm(model, wt, mut)
+    model.eval()
+    if model.device.type != "cuda":
+        model.float()  # keep CPU in fp32
 
-def get_fused_embeddings(model):
+    res = fused_in_llm(
+        model,
+        wt=wt,
+        mut=mut,
+        func_text="Summarize the protein's function.",
+        muta_prompt=f"Mutation {site[0]}→{site[-1]} at position {site[1:-1]}."
+    )
+
+    vec = res["fused"]             # [1, 5*H_llm] fused embedding
+    delta = res["llm_ctx_delta"]   # [1, H_llm] mutation delta (contextual)
+
+    return vec, delta
+
+
+def s(model):
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
     wildtype_protein = "MASDAAAEPSSGVTHPPRYVIGYALAPKKQQSFIQPSLVAQAASRGMDLVPVDASQPLAEQGPFHLLIHALYGDDWRAQLVAFAARHPAVPIVDPPHAIDRLHNRISMLQVVSELDHAADQDSTFGIPSQVVVYDAAALADFGLLAALRFPLIAKPLVADGTAKSHKMSLVYHREGLGKLRPPLVLQEFVNHGGVIFKVYVVGGHVTCVKRRSLPDVSPEDDASAQGSVSFSQVSNLPTERTAEEYYGEKSLEDAVVPPAAFINQIAGGLRRALGLQLFNFDMIRDVRAGDRYLVIDINYFPGYAKMPGYETVLTDFFWEMVHKDGVGNQQEEKGANHVVVK"
     site = "A70K"
     mutated_protein = wildtype_protein[:int(site[1:-1])-1] + site[-1] + wildtype_protein[int(site[1:-1]):]
-    return get_fused(model, wildtype_protein, mutated_protein, site)
+    (vec, delta) = get_fused(model, wildtype_protein, mutated_protein, site)
+    logger.info(f"Fused embeddings: {vec.shape}")
+    logger.info(f"Mutation delta: {delta.shape}") 
 
 
 def main():
@@ -195,8 +236,7 @@ def main():
     model = create_model(args.config, device)
     check(model)
 
-    fused = get_fused_embeddings(model)
-    logger.info(f"Fused embeddings: {fused.shape}")
+    test_fused_embeddings(model)
     
 if __name__ == "__main__":
     #print("CWD:", os.getcwd())
