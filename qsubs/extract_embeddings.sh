@@ -6,7 +6,7 @@
 #BSUB -P acc_DiseaseGeneCell
 #BSUB -q gpu
 #BSUB -gpu "num=1"
-#BSUB -R a100
+#BSUB -R a10080g
 #BSUB -n 1
 #BSUB -R "rusage[mem=32000]"
 #BSUB -W 0:30
@@ -51,6 +51,7 @@ cd /sc/arion/projects/DiseaseGeneCell/Huang_lab_project/MutaPLM  # adjust if nee
 
 LOG_DIR="logs"
 LOG_LEVEL="INFO"
+export PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True,max_split_size_mb:256,garbage_collection_threshold:0.8"
 
 /sc/arion/projects/DiseaseGeneCell/Huang_lab_data/.conda/envs/mutaplm_env/bin/python \
   scripts/extract_embeddings.py \
