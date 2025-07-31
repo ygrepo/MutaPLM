@@ -6,6 +6,7 @@
 #BSUB -P acc_DiseaseGeneCell
 #BSUB -q gpu
 #BSUB -gpu "num=1"
+#BSUB -R a100
 #BSUB -n 1
 #BSUB -R "rusage[mem=32000]"
 #BSUB -W 0:30
