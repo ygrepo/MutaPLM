@@ -27,7 +27,7 @@ export CONDARC="$PROJ/conda/condarc"
 # export TMPDIR="$PROJ/.tmp"
 # mkdir -p logs "$HF_HOME" "$TRANSFORMERS_CACHE" "$TORCH_HOME" "$TMPDIR"
 
-conda activate "$PROJ/.conda/envs/mutaplm_env"
+#conda activate "$PROJ/.conda/envs/mutaplm_env"
 
 # verify PyTorch is built for CUDA 11.8
 # python - <<'PY'
