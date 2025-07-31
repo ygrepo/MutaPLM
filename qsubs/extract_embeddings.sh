@@ -6,10 +6,9 @@
 #BSUB -P acc_DiseaseGeneCell
 #BSUB -q gpu
 #BSUB -gpu "num=1"
-#BSUB -n 4
-#BSUB -M 9000
-#BSUB -R "rusage[mem=9000]"
-#BSUB -W 2:00
+#BSUB -n 1
+#BSUB -R "rusage[mem=16000]"
+#BSUB -W 0:10
 #BSUB -o logs/embeddings.%J.out
 #BSUB -e logs/embeddings.%J.err
 
