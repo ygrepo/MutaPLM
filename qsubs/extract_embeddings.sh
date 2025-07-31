@@ -17,10 +17,16 @@ set -euo pipefail
 module purge
 module load cuda/11.8 cudnn
 module load anaconda3/latest
+#module load anaconda3/2024.06
+
 ml proxies/1 || true
 
 export PROJ=/sc/arion/projects/DiseaseGeneCell/Huang_lab_data
 export CONDARC="$PROJ/conda/condarc"
+
+#eval "$(/hpc/packages/minerva-rocky9/anaconda3/2024.06/bin/conda shell.bash hook)"
+#conda activate /sc/arion/projects/DiseaseGeneCell/Huang_lab_data/.conda/envs/mutaplm_env
+
 # export HF_HOME="$PROJ/.cache/huggingface"
 # export TRANSFORMERS_CACHE="$HF_HOME/transformers"
 # export TORCH_HOME="$PROJ/.cache/torch"
