@@ -434,6 +434,7 @@ def create_model(cfg_path: Path, device):
         model.float()
 
     logger.info("Model loaded successfully.")
+    return model
 
 def load_model(model, checkpoint_path, device="cuda", weights_only=False, strict=False):
     logger = logging.getLogger(__name__)
