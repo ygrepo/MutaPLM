@@ -13,6 +13,7 @@ import argparse
 import pandas as pd
 import numpy as np
 import logging
+import torch
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
