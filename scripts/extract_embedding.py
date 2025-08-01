@@ -1,7 +1,7 @@
 
 import sys
 from pathlib import Path
-import tqdm
+from tqdm import tqdm
 
 # Make imports robust regardless of CWD (repo layout: <repo>/{model,scripts,configs,...})
 REPO_ROOT = Path(__file__).resolve().parents[1]
