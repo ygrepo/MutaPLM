@@ -50,8 +50,7 @@ def main():
     model = load_model_from_config(device, Path(args.config), Path(args.checkpoint_path))
     logger.info("Model loaded successfully.")
  
- if __name__ == "__main__":
-     
+if __name__ == "__main__":     
     #test_fused_embeddings(model)
     #test_fused_soft_embeddings(model)
     main()  
