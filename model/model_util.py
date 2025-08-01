@@ -376,24 +376,24 @@ def check_mutaplm_min(model) -> None:
         Wt = getattr(getattr(model, "proj_text",     None), "weight", None)
 
         if W1 is not None and W1.shape != (H_llm, H_esm):
-            log.error("proj_protein1.weight %s != (%d, %d)", tuple(W1.shape), H_llm, H_esm)
+            logger.error("proj_protein1.weight %s != (%d, %d)", tuple(W1.shape), H_llm, H_esm)
         if W2 is not None and W2.shape != (H_llm, H_esm):
-            log.error("proj_protein2.weight %s != (%d, %d)", tuple(W2.shape), H_llm, H_esm)
+            logger.error("proj_protein2.weight %s != (%d, %d)", tuple(W2.shape), H_llm, H_esm)
         if Wt is not None and Wt.shape != (H_esm, H_llm):
-            log.error("proj_text.weight %s != (%d, %d)", tuple(Wt.shape), H_esm, H_llm)
+            logger.error("proj_text.weight %s != (%d, %d)", tuple(Wt.shape), H_esm, H_llm)
     except Exception as e:
-        log.warning("shape checks skipped: %s", e)
+        logger.warning("shape checks skipped: %s", e)
 
     # Smoke test: one tiny forward to ensure no NaNs
     try:
         v = llm_context_embed_abs(model, "M")  # single Met is valid for ESM
         if torch.isnan(v).any():
-            log.error("NaNs in llm_context_embed_abs('M')")
+            logger.error("NaNs in llm_context_embed_abs('M')")
         else:
-            log.info("smoke test ok: llm_context_embed_abs('M') -> %s", tuple(v.shape))
+            logger.info("smoke test ok: llm_context_embed_abs('M') -> %s", tuple(v.shape))
     except Exception as e:
-        log.error("smoke test failed: %s", e)
-    log.info("smoke test ok: llm_context_embed_abs('M') -> %s", tuple(v.shape))
+        logger.error("smoke test failed: %s", e)
+    logger.info("smoke test ok: llm_context_embed_abs('M') -> %s", tuple(v.shape))
 
     
 def check_mutaplm_model(model):
