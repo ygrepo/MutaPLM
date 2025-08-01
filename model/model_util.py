@@ -6,7 +6,7 @@ from pathlib import Path
 import yaml
 import logging
 from model.mutaplm import MutaPLM
-import datetime
+from datetime import datetime
 
 SYS_INFER = (
     "You are an expert at biology and life science. Now a user gives you several protein sequences "
