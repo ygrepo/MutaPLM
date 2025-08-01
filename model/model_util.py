@@ -5,6 +5,7 @@ import torch, re
 from pathlib import Path
 import yaml
 import logging
+from mutaplm import MutaPLM
 
 SYS_INFER = (
     "You are an expert at biology and life science. Now a user gives you several protein sequences "
@@ -421,7 +422,6 @@ def check_mutaplm_model(model):
         logger.info("%s: mean=%.6f std=%.6f", n, p.mean().item(), p.std().item())
 
 def create_model(cfg_path: Path, device):
-    from model.mutaplm import MutaPLM  # after sys.path insert
     
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
@@ -442,7 +442,7 @@ def create_model(cfg_path: Path, device):
     logger.info("Model loaded successfully.")
     return model
 
-def load_model(model, checkpoint_path, device="cuda", weights_only=False, strict=False):
+def load_model(model, checkpoint_path: Path, weights_only=False, strict=False):
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
     logger.info(f"Loading model checkpoint from {checkpoint_path}")
@@ -481,7 +481,15 @@ def load_model_safely(model, checkpoint_path, device="cuda", weights_only=True, 
     model.eval()
     return model
     
-
+def load_model_from_config(device, config_path: Path, checkpoint_path: Path):
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO)
+    logger.info(f"Using device: {device}")
+    model = create_model(Path(config_path), device)
+    model = load_model(model, checkpoint_path)
+    logger.info("Model loaded successfully.")
+    return model
+    
 def select_device(pref: str) -> torch.device:
     pref = (pref or "auto").lower()
     if pref.startswith("cuda"):
@@ -496,3 +504,17 @@ def select_device(pref: str) -> torch.device:
     if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
         return torch.device("mps")
     return torch.device("cpu")
+
+
+def setup_logging(log_dir: Path, log_level: str = "INFO") -> logging.Logger:
+    log_dir.mkdir(parents=True, exist_ok=True)
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_file = log_dir / f"create_load_model_{ts}.log"
+    logging.basicConfig(
+        level=getattr(logging, log_level),
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[logging.FileHandler(log_file), logging.StreamHandler(sys.stdout)],
+    )
+    logger = logging.getLogger(__name__)
+    logger.info(f"Logging to {log_file}")
+    return logger
