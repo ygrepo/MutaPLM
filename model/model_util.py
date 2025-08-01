@@ -435,14 +435,14 @@ def create_model(cfg_path: Path, device):
 
     logger.info("Model loaded successfully.")
 
-def load_model(model, checkpoint_path):
+def load_model(model, checkpoint_path, device="cuda", weights_only=False, strict=False):
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
     logger.info(f"Loading model checkpoint from {checkpoint_path}")
-    new_ckpt = torch.load(open(checkpoint_path, "rb"), map_location="cpu")["model"]
+    new_ckpt = torch.load(open(checkpoint_path, "rb"), map_location="cpu", weights_only=weights_only)["model"]
     logger.info("Model checkpoint loaded successfully.")
     logger.info("Loading model state dict...")
-    model.load_state_dict(new_ckpt, strict=False)
+    model.load_state_dict(new_ckpt, strict=strict)
     logger.info("Model state dict loaded successfully.")
     model.eval()
     return model

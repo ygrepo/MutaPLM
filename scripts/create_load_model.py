@@ -13,7 +13,7 @@ from datetime import datetime
 def setup_logging(log_dir: Path, log_level: str = "INFO") -> logging.Logger:
     log_dir.mkdir(parents=True, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_file = log_dir / f"extract_embeddings_{ts}.log"
+    log_file = log_dir / f"create_load_model_{ts}.log"
     logging.basicConfig(
         level=getattr(logging, log_level),
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -25,7 +25,7 @@ def setup_logging(log_dir: Path, log_level: str = "INFO") -> logging.Logger:
 
 
 def parse_args():
-    p = argparse.ArgumentParser(description="Extract embeddings from protein sequences")
+    p = argparse.ArgumentParser(description="Create and load MutaPLM model")
     p.add_argument("--log_dir", type=str, default="logs")
     p.add_argument("--log_level", type=str, default="INFO")
     p.add_argument("--config", type=str, default=str(REPO_ROOT / "configs" / "mutaplm_inference.yaml"))
