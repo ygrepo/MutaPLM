@@ -23,7 +23,7 @@ def parse_args():
 def main():
 
     args = parse_args()
-    logger = setup_logging(Path(args.log_dir), args.log_level)
+    logger = setup_logging("create_load_model", Path(args.log_dir), args.log_level)
     device = select_device(args.device)
     logger.info(f"Using device: {device}")
     model = create_model(Path(args.config), device)

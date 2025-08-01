@@ -1,8 +1,8 @@
 #!/bin/bash
-# test_embeddings.sh — submit test_embeddings jobs to LSF GPU queue
+# extract_embeddings.sh — submit extract_embeddings jobs to LSF GPU queue
 
 
-#BSUB -J test_embeddings
+#BSUB -J extract_embeddings
 #BSUB -P acc_DiseaseGeneCell
 #BSUB -q gpu
 #BSUB -gpu "num=1"
@@ -10,8 +10,8 @@
 #BSUB -n 1
 #BSUB -R "rusage[mem=32000]"
 #BSUB -W 0:30
-#BSUB -o logs/test_embeddings.%J.out
-#BSUB -e logs/test_embeddings.%J.err
+#BSUB -o logs/extract_embeddings.%J.out
+#BSUB -e logs/extract_embeddings.%J.err
 
 set -euo pipefail
 
@@ -32,13 +32,27 @@ LOG_LEVEL="INFO"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 LOG_FILE="${LOG_DIR}/test_embeddings_${TIMESTAMP}.log"
 
+DATASET_DIR="mutadescribe_data"
+DATA_FN="${DATASET_DIR}/structural_split/train.csv"
+OUTPUT_DIR="output/data"
+OUTPUT_FN="${OUTPUT_DIR}/structural_split_train_with_embeddings.csv"
+N=2000
+SEED=42
+
+mkdir -p "$OUTPUT_DIR"
+
+
 export PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True,max_split_size_mb:256,garbage_collection_threshold:0.8"
 export NUMEXPR_MAX_THREADS=64
 
 /sc/arion/projects/DiseaseGeneCell/Huang_lab_data/.conda/envs/mutaplm_env/bin/python \
-  scripts/test_embedding.py \
+  scripts/extract_embedding.py \
   --log_dir "$LOG_DIR" \
   --log_level "$LOG_LEVEL" \
+  --data_fn "$DATA_FN" \
+  --output_fn "$OUTPUT_FN" \
+  --n "$N" \
+  --seed "$SEED" \
 2>&1 | tee -a "$LOG_FILE"
 
 # Check the exit status of the Python script

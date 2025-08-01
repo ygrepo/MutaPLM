@@ -492,10 +492,10 @@ def select_device(pref: str) -> torch.device:
     return torch.device("cpu")
 
 
-def setup_logging(log_dir: Path, log_level: str = "INFO") -> logging.Logger:
+def setup_logging(prefix: str, log_dir: Path, log_level: str = "INFO") -> logging.Logger:
     log_dir.mkdir(parents=True, exist_ok=True)
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_file = log_dir / f"create_load_model_{ts}.log"
+    log_file = log_dir / f"{prefix}_{ts}.log"
     logging.basicConfig(
         level=getattr(logging, log_level),
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
