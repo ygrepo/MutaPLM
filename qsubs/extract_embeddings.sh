@@ -32,7 +32,7 @@ LOG_LEVEL="INFO"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 LOG_FILE="${LOG_DIR}/test_embeddings_${TIMESTAMP}.log"
 
-DATASET_DIR="mutadescribe_data"
+DATASET_DIR="data/mutadescribe_data"
 DATA_FN="${DATASET_DIR}/structural_split/train.csv"
 OUTPUT_DIR="output/data"
 OUTPUT_FN="${OUTPUT_DIR}/structural_split_train_with_embeddings.csv"
