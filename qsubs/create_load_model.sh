@@ -24,6 +24,10 @@ ml proxies/1 || true
 
 export PROJ=/sc/arion/projects/DiseaseGeneCell/Huang_lab_data
 export CONDARC="$PROJ/conda/condarc"
+LOG_DIR="logs"
+LOG_LEVEL="INFO"
+TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+LOG_FILE="${LOG_DIR}/create_load_model_${TIMESTAMP}.log"
 
 #eval "$(/hpc/packages/minerva-rocky9/anaconda3/2024.06/bin/conda shell.bash hook)"
 #conda activate /sc/arion/projects/DiseaseGeneCell/Huang_lab_data/.conda/envs/mutaplm_env
@@ -49,12 +53,23 @@ cd /sc/arion/projects/DiseaseGeneCell/Huang_lab_project/MutaPLM  # adjust if nee
 #conda activate mutaplm
 #conda activate /sc/arion/projects/DiseaseGeneCell/Huang_lab_data/.conda/envs/mutaplm_env
 
-LOG_DIR="logs"
-LOG_LEVEL="INFO"
 export PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True,max_split_size_mb:256,garbage_collection_threshold:0.8"
 export NUMEXPR_MAX_THREADS=64
 
 /sc/arion/projects/DiseaseGeneCell/Huang_lab_data/.conda/envs/mutaplm_env/bin/python \
   scripts/create_load_model.py \
   --log_dir "$LOG_DIR" \
-  --log_level "$LOG_LEVEL"
+  --log_level "$LOG_LEVEL" \
+2>&1 | tee -a "$LOG_FILE"
+
+# Check the exit status of the Python script
+EXIT_CODE=${PIPESTATUS[0]}
+
+if [ $EXIT_CODE -eq 0 ]; then
+    echo "Script completed successfully at $(date)" | tee -a "$LOG_FILE"
+    exit 0
+else
+    echo "Error: Script failed with exit code $EXIT_CODE" | tee -a "$LOG_FILE"
+    echo "Check the log file for details: $LOG_FILE"
+    exit $EXIT_CODE
+fi
