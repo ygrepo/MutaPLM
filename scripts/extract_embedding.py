@@ -98,12 +98,12 @@ def load_data(data_fn: Path, n: int, seed: int=42):
 
 def main():
     args = parse_args()
-    logger = setup_logging("test_embedding", Path(args.log_dir), args.log_level)
+    logger = setup_logging("extract_embedding", Path(args.log_dir), args.log_level)
     device = select_device(args.device)
     logger.info(f"Using device: {device}")
     model = load_model_from_config(device, Path(args.config), Path(args.checkpoint_path))
     logger.info("Model loaded successfully.")
-    df = load_data(args)
+    df = load_data(Path(args.data_fn), args.n, args.seed)
     retrieve_embeddings(model, df, Path(args.output_fn))
    
  
