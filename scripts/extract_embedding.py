@@ -82,13 +82,9 @@ def retrieve_embeddings(model, df, output_fn: Path, batch_size=16):
     # Save embeddings if needed
     if output_fn:
         logger.info(f"Saving embeddings to {output_fn}")
-        np.savez_compressed(
-            output_fn,
-            protein1_embeddings=np.stack(protein1_embeddings),
-            protein2_embeddings=np.stack(protein2_embeddings),
-            cosine_sims=np.array(cosine_sims)
-        )
-
+        df.to_csv(output_fn, index=False)
+        logger.info(f"Saved embeddings to {output_fn}")
+        
 def load_data(data_fn: Path, n: int, seed: int=42):
     df = pd.read_csv(data_fn, low_memory=False)
     df.drop(columns=["Unnamed: 0"], inplace=True, errors="ignore")
