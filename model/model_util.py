@@ -59,7 +59,7 @@ def llm_context_embed_abs(model, seq: str) -> torch.Tensor:
 def llm_context_cosine(model, wt: str, mut: str) -> float:
     v_wt  = llm_context_embed_abs(model, wt)
     v_mut = llm_context_embed_abs(model, mut)
-    return F.cosine_similarity(v_wt.unsqueeze(0), v_mut.unsqueeze(0)).item()
+    return v_wt, v_mut, F.cosine_similarity(v_wt.unsqueeze(0), v_mut.unsqueeze(0)).item()
 
 @torch.no_grad()
 def fused_abs_pair(model, wt: str, mut: str):

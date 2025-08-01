@@ -6,9 +6,10 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 from model.model_util import (
-    select_device, load_model_from_config, setup_logging
+    select_device, load_model_from_config, setup_logging, llm_context_cosine
 )
 import argparse
+import logging
 
 def parse_args():
     p = argparse.ArgumentParser(description="Create and load MutaPLM model")
@@ -21,16 +22,15 @@ def parse_args():
 
 
 
-# def test_fused_embeddings(model):
-#     logger = logging.getLogger(__name__)
-#     logger.setLevel(logging.INFO)
-#     wildtype_protein = "MASDAAAEPSSGVTHPPRYVIGYALAPKKQQSFIQPSLVAQAASRGMDLVPVDASQPLAEQGPFHLLIHALYGDDWRAQLVAFAARHPAVPIVDPPHAIDRLHNRISMLQVVSELDHAADQDSTFGIPSQVVVYDAAALADFGLLAALRFPLIAKPLVADGTAKSHKMSLVYHREGLGKLRPPLVLQEFVNHGGVIFKVYVVGGHVTCVKRRSLPDVSPEDDASAQGSVSFSQVSNLPTERTAEEYYGEKSLEDAVVPPAAFINQIAGGLRRALGLQLFNFDMIRDVRAGDRYLVIDINYFPGYAKMPGYETVLTDFFWEMVHKDGVGNQQEEKGANHVVVK"
-#     site = "A70K"
-#     mutated_protein = wildtype_protein[:int(site[1:-1])-1] + site[-1] + wildtype_protein[int(site[1:-1]):]
-#     (vec, delta) = get_fused(model, wildtype_protein, mutated_protein, site)
-#     logger.info(f"Fused embeddings: {vec.shape}")
-#     logger.info(f"Mutation delta: {delta.shape}") 
-
+def test_embeddings(model, logger):
+    wildtype_protein = "MASDAAAEPSSGVTHPPRYVIGYALAPKKQQSFIQPSLVAQAASRGMDLVPVDASQPLAEQGPFHLLIHALYGDDWRAQLVAFAARHPAVPIVDPPHAIDRLHNRISMLQVVSELDHAADQDSTFGIPSQVVVYDAAALADFGLLAALRFPLIAKPLVADGTAKSHKMSLVYHREGLGKLRPPLVLQEFVNHGGVIFKVYVVGGHVTCVKRRSLPDVSPEDDASAQGSVSFSQVSNLPTERTAEEYYGEKSLEDAVVPPAAFINQIAGGLRRALGLQLFNFDMIRDVRAGDRYLVIDINYFPGYAKMPGYETVLTDFFWEMVHKDGVGNQQEEKGANHVVVK"
+    site = "A70K"
+    mutated_protein = wildtype_protein[:int(site[1:-1])-1] + site[-1] + wildtype_protein[int(site[1:-1]):]
+    v_wt, v_mut, cos = llm_context_cosine(model, wildtype_protein, mutated_protein)
+    logger.info(f"Cosine similarity: {cos}")
+    logger.info(f"WT embedding: {v_wt.shape}")
+    logger.info(f"Mut embedding: {v_mut.shape}")
+   
 # def test_fused_soft_embeddings(model):
 #     logger = logging.getLogger(__name__)
 #     logger.setLevel(logging.INFO)
@@ -49,8 +49,8 @@ def main():
     logger.info(f"Using device: {device}")
     model = load_model_from_config(device, Path(args.config), Path(args.checkpoint_path))
     logger.info("Model loaded successfully.")
+    test_embeddings(model, logger)
+    
  
 if __name__ == "__main__":     
-    #test_fused_embeddings(model)
-    #test_fused_soft_embeddings(model)
     main()  
