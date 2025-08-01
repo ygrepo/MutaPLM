@@ -30,7 +30,7 @@ cd /sc/arion/projects/DiseaseGeneCell/Huang_lab_project/MutaPLM  # adjust if nee
 LOG_DIR="logs"
 LOG_LEVEL="INFO"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-LOG_FILE="${LOG_DIR}/test_embeddings_${TIMESTAMP}.log"
+LOG_FILE="${LOG_DIR}/extract_embeddings_${TIMESTAMP}.log"
 
 DATASET_DIR="data/mutadescribe_data"
 DATA_FN="${DATASET_DIR}/structural_split/train.csv"
