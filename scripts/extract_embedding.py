@@ -25,6 +25,7 @@ def parse_args():
     p.add_argument("--device", type=str, default="auto", help="auto|cpu|cuda|cuda:N|mps")
     p.add_argument("--checkpoint_path", type=str, default=str(REPO_ROOT / "ckpts" / "mutaplm.pth"))
     p.add_argument("--data_fn", type=str, default="")
+    p.add_argument("--output_fn", type=str, default="")
     p.add_argument("--n", type=int, default=10)
     p.add_argument("--seed", type=int, default=42)
     return p.parse_args()
