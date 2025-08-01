@@ -185,16 +185,29 @@ class MutaPLM(nn.Module):
         
         return new_ckpt
         
-
     def maybe_autocast(self, dtype=torch.bfloat16):
-        # if on cpu, don't use autocast
-        # if on gpu, use autocast with dtype if provided, otherwise use torch.float16
-        enable_autocast = self.device != torch.device("cpu")
-
-        if enable_autocast:
-            return torch.amp.autocast(dtype=dtype)
+        if self.device.type in "cuda":
+            return torch.amp.autocast(device_type="cuda", dtype=dtype)
+        elif self.device.type == "cpu":
+            return torch.amp.autocast(device_type="cpu", dtype=dtype)
         else:
             return contextlib.nullcontext()
+
+    # def maybe_autocast(self, dtype=torch.bfloat16):
+    #     if self.device.type in {"cuda", "mps"}:
+    #         return torch.amp.autocast(device_type=self.device.type, dtype=dtype)
+    #     else:
+    #     return contextlib.nullcontext()
+
+    # def maybe_autocast(self, dtype=torch.bfloat16):
+    #     # if on cpu, don't use autocast
+    #     # if on gpu, use autocast with dtype if provided, otherwise use torch.float16
+    #     enable_autocast = self.device != torch.device("cpu")
+
+    #     if enable_autocast:
+    #         return torch.amp.autocast(dtype=dtype)
+    #     else:
+    #         return contextlib.nullcontext()
 
 
     def _encode_protein(self, protein1, protein2):
