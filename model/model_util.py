@@ -7,6 +7,10 @@ import yaml
 import logging
 from model.mutaplm import MutaPLM
 from datetime import datetime
+import sys
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 SYS_INFER = (
     "You are an expert at biology and life science. Now a user gives you several protein sequences "
@@ -119,7 +123,6 @@ def fused_in_llm(model, wt: str, mut: str, *,
       - "fused"       : [1, 5*H_llm] (concat of above)
       - "spans"       : dict with (start, end) indices for P1/P2 in the LLM sequence
     """
-    device = model.device if getattr(model, "device", None) is not None else next(model.parameters()).device
 
     # 1) ESM→LLM pooled tokens for WT & Mut
     #    p1, p2: [1, Q, H_llm] (already projected into LLM space)
@@ -224,7 +227,6 @@ def soft_mutation_embed(model, wt: str, *,
     - Uses the inference helper that exposes batched_regress_ids (mask for soft tokens).
     - Does NOT require model.t2m=True.
     """
-    device = model.device if getattr(model, "device", None) is not None else next(model.parameters()).device
 
     # 1) Get pooled ESM->LLM tokens for the WT only
     with model.maybe_autocast():  # autocast if CUDA, nullcontext if CPU
@@ -332,9 +334,6 @@ def get_fused(model, wt, mut, site):
 
 
 def check_mutaplm_min(model) -> None:
-    logger = logging.getLogger("mutaplm.check")
-    logger.setLevel(logging.INFO)
-
     if model is None:
         logger.error("model is None")
         return
@@ -399,9 +398,6 @@ def check_mutaplm_min(model) -> None:
 
     
 def check_mutaplm_model(model):
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-
     if model is None or not hasattr(model, "llm"):
         logger.error("model or model.llm is missing")
         return
@@ -423,10 +419,6 @@ def check_mutaplm_model(model):
         logger.info("%s: mean=%.6f std=%.6f", n, p.mean().item(), p.std().item())
 
 def create_model(cfg_path: Path, device):
-    
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-
     if not cfg_path.exists():
         raise FileNotFoundError(f"Config not found: {cfg_path}")
 
@@ -444,8 +436,6 @@ def create_model(cfg_path: Path, device):
     return model
 
 def load_model(model, checkpoint_path: Path, weights_only=False, strict=False):
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
     logger.info(f"Loading model checkpoint from {checkpoint_path}")
     new_ckpt = torch.load(open(checkpoint_path, "rb"), map_location="cpu", weights_only=weights_only)["model"]
     logger.info("Model checkpoint loaded successfully.")
@@ -456,9 +446,6 @@ def load_model(model, checkpoint_path: Path, weights_only=False, strict=False):
     return model
     
 def load_model_safely(model, checkpoint_path, device="cuda", weights_only=True, strict=True):
-
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
     logger.info(f"Loading model checkpoint from {checkpoint_path}")
     # Allowlist the global(s) the checkpoint needs
     add_safe_globals([getattr])  # add more if error lists others
@@ -483,8 +470,6 @@ def load_model_safely(model, checkpoint_path, device="cuda", weights_only=True, 
     return model
     
 def load_model_from_config(device, config_path: Path, checkpoint_path: Path):
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
     logger.info(f"Using device: {device}")
     model = create_model(Path(config_path), device)
     model = load_model(model, checkpoint_path)
