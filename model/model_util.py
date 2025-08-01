@@ -5,7 +5,7 @@ import torch, re
 from pathlib import Path
 import yaml
 import logging
-from mutaplm import MutaPLM
+from model.mutaplm import MutaPLM
 
 SYS_INFER = (
     "You are an expert at biology and life science. Now a user gives you several protein sequences "
