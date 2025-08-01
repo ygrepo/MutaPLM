@@ -328,20 +328,21 @@ def get_fused(model, wt, mut, site):
 
     return vec, delta
 
+
 def check_mutaplm_min(model) -> None:
-    log = logging.getLogger("mutaplm.check")
-    log.setLevel(logging.INFO)
+    logger = logging.getLogger("mutaplm.check")
+    logger.setLevel(logging.INFO)
 
     if model is None:
-        log.error("model is None")
+        logger.error("model is None")
         return
 
     def stat(name, t):
         if t is None:
-            log.warning("%s: <missing>", name)
+            logger.warning("%s: <missing>", name)
             return
         t = t.detach().float()
-        log.info("%-22s mean=%+.6f std=%.6f shape=%s req_grad=%s",
+        logger.info("%-22s mean=%+.6f std=%.6f shape=%s req_grad=%s",
                  name, t.mean().item(), t.std().item(), tuple(t.shape),
                  getattr(t, "requires_grad", False))
 
@@ -350,15 +351,21 @@ def check_mutaplm_min(model) -> None:
         emb_w = model.llm.get_input_embeddings().weight
         stat("llm.emb.weight", emb_w)
     except Exception as e:
-        log.error("llm input embeddings not accessible: %s", e)
+        logger.error("llm input embeddings not accessible: %s", e)
 
     # Key bridge params
     stat("proj_protein1.weight", getattr(getattr(model, "proj_protein1", None), "weight", None))
+    logger.info("proj_protein1.weight shape: %s", getattr(getattr(model, "proj_protein1", None), "weight", None).shape)
     stat("proj_protein2.weight", getattr(getattr(model, "proj_protein2", None), "weight", None))
+    logger.info("proj_protein2.weight shape: %s", getattr(getattr(model, "proj_protein2", None), "weight", None).shape)
     stat("proj_text.weight",     getattr(getattr(model, "proj_text",     None), "weight", None))
+    logger.info("proj_text.weight shape: %s", getattr(getattr(model, "proj_text",     None), "weight", None).shape)
     stat("query_protein1", getattr(model, "query_protein1", None))
+    logger.info("query_protein1 shape: %s", getattr(model, "query_protein1", None).shape)
     stat("query_protein2", getattr(model, "query_protein2", None))
+    logger.info("query_protein2 shape: %s", getattr(model, "query_protein2", None).shape)
     stat("soft_tokens",    getattr(model, "soft_tokens", None))
+    logger.info("soft_tokens shape: %s", getattr(model, "soft_tokens", None).shape)
 
     # Shape consistency
     try:
@@ -386,9 +393,10 @@ def check_mutaplm_min(model) -> None:
             log.info("smoke test ok: llm_context_embed_abs('M') -> %s", tuple(v.shape))
     except Exception as e:
         log.error("smoke test failed: %s", e)
+    log.info("smoke test ok: llm_context_embed_abs('M') -> %s", tuple(v.shape))
 
     
-def check(model):
+def check_mutaplm_model(model):
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.INFO)
 
@@ -411,8 +419,6 @@ def check(model):
             continue
         p = p.detach().float()
         logger.info("%s: mean=%.6f std=%.6f", n, p.mean().item(), p.std().item())
-
-    
 
 def create_model(cfg_path: Path, device):
     from model.mutaplm import MutaPLM  # after sys.path insert
