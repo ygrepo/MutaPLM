@@ -75,6 +75,8 @@ def retrieve_embeddings(model, df, output_fn: Path, batch_size=16):
 
     # --- Combine results ---
     df["cosine_similarity"] = cosine_sims
+    df["protein1_embedding"] = protein1_embeddings
+    df["protein2_embedding"] = protein2_embeddings
 
     logger.info(f"Computed embeddings for {len(df)} protein pairs")
     logger.info(f"Example cosine similarity: {cosine_sims[:5]}")
