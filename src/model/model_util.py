@@ -5,7 +5,7 @@ import torch, re
 from pathlib import Path
 import yaml
 import logging
-from model.mutaplm import MutaPLM
+from src.model.mutaplm import MutaPLM
 from datetime import datetime
 import sys
 

@@ -37,7 +37,7 @@ from transformers.modeling_utils import PreTrainedModel, find_pruneable_heads_an
 from transformers.utils import logging
 from transformers.models.esm.configuration_esm import EsmConfig
 
-from model.esm_landscape import Decoder
+from src.model.esm_landscape import Decoder
 
 logger = logging.get_logger(__name__)
 

@@ -1,5 +1,5 @@
 import argparse
-from evaluator import Evaluator, MutaExplainEvaluator, MutaEngineerEvaluator, FitnessOptimizeEvaluator
+from src.evaluator import MutaExplainEvaluator, MutaEngineerEvaluator, FitnessOptimizeEvaluator
 
 def add_arguments(parser):
     parser.add_argument("--muta_explain", action="store_true")

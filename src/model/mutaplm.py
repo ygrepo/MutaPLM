@@ -1,16 +1,10 @@
-import json
-import contextlib
-import re
-import sys
-
 import torch
 import torch.nn as nn
 
 from transformers import LlamaTokenizer, LlamaConfig, LlamaForCausalLM, EsmTokenizer
 from collections import OrderedDict
 from peft import get_peft_model, LoraConfig, TaskType
-from torch.nn import CrossEntropyLoss
-from model.modeling_esm import EsmForMaskedLM, EsmForMutationDesign
+from src.model.modeling_esm import EsmForMaskedLM, EsmForMutationDesign
 
 class MutaPLM(nn.Module):
     def __init__(

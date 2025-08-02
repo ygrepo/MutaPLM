@@ -5,7 +5,7 @@ from pathlib import Path
 # Make imports robust regardless of CWD (repo layout: <repo>/{model,scripts,configs,...})
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
-from model.model_util import (
+from src.model.model_util import (
     select_device, create_model,  load_model, check_mutaplm_model, check_mutaplm_min, setup_logging
 )
 import argparse

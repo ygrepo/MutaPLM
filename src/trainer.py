@@ -4,9 +4,7 @@ nowtime = time.localtime()
 
 import logging
 logger = logging.getLogger(__name__)
-
-import argparse
-from collections import OrderedDict
+    
 import numpy as np
 import random
 import json
@@ -20,9 +18,9 @@ from torch.utils.data import DataLoader, RandomSampler
 from torch.utils.data.distributed import DistributedSampler
 
 from dataset import dataset_name2cls
-from model import model_name2cls
-from utils import init_distributed_mode, get_rank, is_main_process, concat_gather, MetricLogger, SmoothedValue
-from metrics import name2metric
+from src.model import model_name2cls
+from src.utils import init_distributed_mode, get_rank, is_main_process, concat_gather, MetricLogger, SmoothedValue
+from src.metrics import name2metric
 
 class Trainer(object):
     @staticmethod

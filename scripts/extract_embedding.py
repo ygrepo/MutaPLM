@@ -6,12 +6,11 @@ from tqdm import tqdm
 # Make imports robust regardless of CWD (repo layout: <repo>/{model,scripts,configs,...})
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
-from model.model_util import (
+from src.model.model_util import (
     select_device, load_model_from_config, setup_logging, llm_context_cosine
 )
 import argparse
 import pandas as pd
-import numpy as np
 import logging
 import torch
 logger = logging.getLogger(__name__)

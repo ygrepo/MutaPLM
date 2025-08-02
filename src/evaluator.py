@@ -3,8 +3,6 @@ from abc import ABC, abstractmethod
 import logging
 logger = logging.getLogger(__name__)
 
-from collections import OrderedDict
-import copy
 import yaml
 from tqdm import tqdm
 from nltk.translate.bleu_score import corpus_bleu
@@ -13,15 +11,14 @@ from rouge_score import rouge_scorer
 from transformers import EsmForMaskedLM, EsmTokenizer, BertForMaskedLM, BertTokenizer
 
 import numpy as np
-import pandas as pd
 import torch
 from torch.cuda.amp import autocast
 from torch.utils.data import DataLoader
 
-from dataset import dataset_name2cls
-from dataset.fitness_dataset import name2prompt, name2target
-from model import model_name2cls
-from model.esm_landscape import EsmForLandscapeRegression
+from src.dataset import dataset_name2cls
+from src.metrics import name2metric
+from src.model import model_name2cls
+from src.model.esm_landscape import EsmForLandscapeRegression
 
 class Evaluator(ABC):
     @staticmethod
