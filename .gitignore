@@ -9,3 +9,5 @@ output/
 /ckpts/*
 !/ckpts/.placeholder
 __pycache__/
+doc
+.DS_Store

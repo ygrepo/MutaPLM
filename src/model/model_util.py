@@ -26,12 +26,12 @@ def llm_context_embed_abs(model, seq: str) -> torch.Tensor:
     """
     model.eval()
 
-    # 1) LLM-aligned P1 tokens (no LLM yet)
+    # 1) Converts the raw amino acid sequence to LLM-aligned embeddings
     with model.maybe_autocast():
         p1 = model._encode_protein([seq], None)     # [1, Q1, H_llm]
     Q1 = p1.shape[1]
 
-    # 2) Build Stage-1 wrapped inputs (no P2/delta, no text)
+    # 2) Inserts special tokens around P1 to create the full Stage-1 LLM input
     wrapped_embeds, attn_mask = model._wrapped_sentence_inference(
         p1, None, muta_prompt=None, predict_function=None
     )  # [1, T, H_llm], [1, T]
@@ -43,14 +43,14 @@ def llm_context_embed_abs(model, seq: str) -> torch.Tensor:
             attention_mask=attn_mask,
             output_hidden_states=True,
             return_dict=True,
-        ).hidden_states[-1]                           # [1, T, H_llm]
+        ).hidden_states[-1]  # [1, T, H_llm]
 
-    # 4) Compute P1 span indices
+    # 4) Compute the span for P1 residues
     sys_len = len(model.llm_tokenizer(SYS_INFER, add_special_tokens=False).input_ids)
-    p1_start = 1 + sys_len + 1                       # BOS(1) + SYS(sys_len) + BOP(1)
+    p1_start = 1 + sys_len + 1  # BOS(1) + SYS(sys_len) + BOP(1)
     p1_end   = p1_start + Q1
 
-    # 5) Mean-pool P1 hidden states
+    # 5) Mean-pools the hidden states for P1 residues
     v = hs[:, p1_start:p1_end, :].mean(dim=1).squeeze(0).float()  # [H_llm]
     return v
 

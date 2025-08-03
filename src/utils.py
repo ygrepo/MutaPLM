@@ -1,7 +1,7 @@
 import time
 import datetime
 from collections import defaultdict, deque
-
+import numpy as np
 import logging
 logger = logging.getLogger(__name__)
 
@@ -250,3 +250,8 @@ class MetricLogger(object):
         total_time_str = str(datetime.timedelta(seconds=int(total_time)))
         LOG('{} Total time: {} ({:.4f} s / it)'.format(
             header, total_time_str, total_time / len(iterable)), args = self.args)
+        
+def to_float_array(x):
+    if isinstance(x, str):
+        return np.fromstring(x.strip("[]"), sep=" ", dtype=float)
+    return np.array(x, dtype=float)
